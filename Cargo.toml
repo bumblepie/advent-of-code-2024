@@ -1,0 +1,10 @@
+[package]
+name = "AdventOfCode2024"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.21", features = ["derive"] }
+rstest = "0.23.0"
+itertools = "0.13.0"
+regex = { version = "1.11.1", features = [] }
