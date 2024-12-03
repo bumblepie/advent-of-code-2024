@@ -10,6 +10,12 @@ pub fn part_1(input_file: &str) {
     println!("Sum of diffs: {}", result);
 }
 
+pub fn part_2(input_file: &str) {
+    let (list, other_list) = parse_file(input_file);
+    let result = similarity_score(&list, &other_list);
+    println!("Similarity score: {}", result);
+}
+
 fn parse_file(input_file: &str) -> (Vec<u32>,Vec<u32>) {
     let regex = Regex::new(r"(?<left>\d+)\s+(?<right>\d+)").unwrap();
     let file = File::open(input_file).expect("file not found");
@@ -39,6 +45,16 @@ fn sum_diffs(list: &Vec<u32>, other_list: &Vec<u32>) -> u32 {
         .sum()
 }
 
+fn similarity_score(list: &Vec<u32>, other_list: &Vec<u32>) -> u32 {
+    let counts = other_list.iter().counts();
+    list.iter()
+        .map(|item| {
+            let count = *counts.get(item).unwrap_or(&0) as u32;
+            item * count
+        })
+        .sum()
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
@@ -58,6 +74,13 @@ mod tests {
     #[case(vec![3, 4, 2, 1, 3, 3], vec![4, 3, 5, 3, 9, 3], 11)]
     fn test_sum_diffs(#[case] list: Vec<u32>, #[case] other_list: Vec<u32>, #[case] expected_result: u32) {
         let result = sum_diffs(&list, &other_list);
+        assert_eq!(result, expected_result);
+    }
+
+    #[rstest]
+    #[case(vec![3, 4, 2, 1, 3, 3], vec![4, 3, 5, 3, 9, 3], 31)]
+    fn test_similarity_score(#[case] list: Vec<u32>, #[case] other_list: Vec<u32>, #[case] expected_result: u32) {
+        let result = similarity_score(&list, &other_list);
         assert_eq!(result, expected_result);
     }
 }
