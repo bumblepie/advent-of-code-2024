@@ -1,5 +1,6 @@
 mod day_1;
 mod day_2;
+mod day_3;
 
 use clap::Parser;
 
@@ -25,6 +26,10 @@ fn main() {
         2 => match args.part {
             1 => day_2::part_1("inputs/day-2-input.txt"),
             2 => day_2::part_2("inputs/day-2-input.txt"),
+            _ => panic!("Unknown part: {}", args.part),
+        }
+        3 => match args.part {
+            1 => day_3::part_1("inputs/day-3-input.txt"),
             _ => panic!("Unknown part: {}", args.part),
         }
         _ => panic!("Unknown day: {}", args.day),
