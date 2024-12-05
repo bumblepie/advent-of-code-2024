@@ -47,7 +47,7 @@ enum Instruction {
 fn evaluate(state: EvaluationState, instruction: Instruction) -> EvaluationState {
     match instruction {
         Instruction::Multiply(multiply_instruction) => {
-            if (state.enabled) {
+            if state.enabled {
                 EvaluationState {
                     total: state.total + evaluate_mult(multiply_instruction),
                     ..state
