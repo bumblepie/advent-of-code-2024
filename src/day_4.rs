@@ -12,183 +12,68 @@ pub fn part_1(input_file: &str) {
 }
 
 fn find_xmas(lines: Vec<String>) -> usize {
-    get_lines_to_check(lines)
-        .iter()
-        .map(|line| count_xmas_occurrences(line.as_str()))
-        .sum()
+    let offsets = dbg!(vec![-1, 0, 1]
+        .into_iter()
+        .cartesian_product(vec![-1, 0, 1].into_iter())
+        .filter(|offset| offset.0 != 0 || offset.1 != 0)
+        .collect());
+
+    let mut count = 0;
+
+    for (row, line) in lines.iter().enumerate() {
+        for (column, char) in line.chars().enumerate() {
+            if char == 'X' {
+                count += count_xmas_occurrences((row, column), &lines, &offsets, "MAS");
+            }
+        }
+    }
+
+    count
 }
 
-fn count_xmas_occurrences(line: &str) -> usize {
-    let mut xmas_pointer = 0;
-    let mut samx_pointer = 0;
+fn count_xmas_occurrences(position: (usize, usize), lines: &Vec<String>, offsets: &Vec<(i32, i32)>, searching_for: &str) -> usize {
+    if searching_for.is_empty() {
+        return 1;
+    }
+
     let mut count = 0;
-    for c in line.chars() {
-        match c {
-            'X' => {
-                xmas_pointer = 1;
-                if samx_pointer == 3 {
-                    count += 1;
-                }
-                samx_pointer = 0;
-            },
-            'M' => {
-                xmas_pointer = if xmas_pointer == 1 { 2 } else { 0 };
-                samx_pointer = if samx_pointer == 2 { 3 } else { 0 };
-            },
-            'A' => {
-                xmas_pointer = if xmas_pointer == 2 { 3 } else { 0 };
-                samx_pointer = if samx_pointer == 1 { 2 } else { 0 };
-            },
-            'S' => {
-                if xmas_pointer == 3 {
-                    count += 1;
-                }
-                xmas_pointer = 0;
-                samx_pointer = 1;
-            }
-            _ => {
-                xmas_pointer = 0;
-                samx_pointer = 0;
-            }
+    for offset in offsets {
+        let new_position = (position.0 as i32 + offset.0, position.1 as i32 + offset.1);
+        if new_position.0 < 0
+            || new_position.0 >= lines.len() as i32
+            || new_position.1 < 0
+            || new_position.1 >= lines[new_position.0 as usize].len() as i32 {
+            // new position is outside of the bounds of the word grid
+            continue;
+        }
+        let new_position = (new_position.0 as usize, new_position.1 as usize);
+
+        if lines[new_position.0].chars().nth(new_position.1 as usize) == searching_for.chars().nth(0) {
+            count += count_xmas_occurrences(new_position, lines, &vec![offset.clone()], &searching_for[1..]);
         }
     }
     count
 }
 
-fn transpose(lines: Vec<String>) -> Vec<String> {
-    let max_line_length = lines.iter()
-        .map(|line| line.len())
-        .max()
-        .unwrap();
-    let mut transposed_lines: Vec<String> = vec![String::new(); max_line_length];
-    for row in 0..lines.len() {
-        let line = lines[row].as_str();
-        for column in 0..lines[row].len() {
-            if let Some(character) = line.chars().nth(column) {
-                transposed_lines[column].push(character);
-            }
-        }
-    }
-    transposed_lines
-}
-
-fn get_lines_to_check(lines: Vec<String>) -> Vec<String> {
-    let horizontal_lines = lines.clone();
-    let vertical_lines = transpose(lines.clone());
-
-    //Lines running diagonally from top left to bottom right
-    let diagonal_lines_upper_right = transpose(lines.clone()
-        .into_iter()
-        .enumerate()
-        .map(|(index, line)| line[index..].to_owned())
-        .collect_vec());
-    let mut diagonal_lines_bottom_left = transpose(lines.clone()
-        .into_iter()
-        .enumerate()
-        .map(|(index, line)| {
-            line[..index+1]
-                .chars()
-                .rev() // reverse to ensure diagonals line up when transposed
-                .collect()
-        })
-        .collect_vec());
-    diagonal_lines_bottom_left.remove(0); // The first diagonal is shared with diagonal_lines_upper_right
-
-    // Lines running diagonally from top right to bottom left
-    let diagonal_lines_upper_left = transpose(lines.clone()
-        .into_iter()
-        .enumerate()
-        .map(|(index, line)| {
-            line[..line.len()-index]
-                .chars()
-                .rev() // reverse to ensure diagonals line up when transposed
-                .collect()
-        })
-        .collect_vec());
-    let mut diagonal_lines_bottom_right = transpose(lines.clone()
-        .into_iter()
-        .enumerate()
-        .map(|(index, line)| {
-            line[(line.len()- index - 1)..].to_owned()
-        })
-        .collect_vec());
-    diagonal_lines_bottom_right.remove(0); // The first diagonal is shared with diagonal_lines_upper_left
-
-    horizontal_lines.into_iter()
-        .chain(vertical_lines.into_iter())
-        .chain(diagonal_lines_upper_right.into_iter())
-        .chain(diagonal_lines_bottom_left.into_iter())
-        .chain(diagonal_lines_upper_left.into_iter())
-        .chain(diagonal_lines_bottom_right.into_iter())
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use rstest::rstest;
     use super::*;
 
     #[test]
-    fn test_transpose()
-    {
-        /*
-        ABC
-        DEF
-        GHI
-         */
-        let before = vec!["ABC".to_owned(), "DEF".to_owned(), "GHI".to_owned()];
-        let expected = vec!["ADG".to_owned(), "BEH".to_owned(), "CFI".to_owned()];
-        assert_eq!(transpose(before), expected);
+    fn test_part_1_example() {
+        let file = File::open("inputs/day-4-example.txt").expect("file not found");
+        let lines: Result<Vec<_>, _> = io::BufReader::new(file).lines().collect();
+        let lines = lines.expect("Error reading lines");
+        let result = find_xmas(lines);
+        assert_eq!(result, 18);
     }
 
     #[test]
-    fn test_get_lines_to_check()
-    {
-        /*
-        ABCD
-        EFGH
-        IJKL
-        MNOP
-         */
-        let before = vec!["ABCD".to_owned(), "EFGH".to_owned(), "IJKL".to_owned(), "MNOP".to_owned()];
-        let expected = vec![
-            "ABCD".to_owned(),
-            "EFGH".to_owned(),
-            "IJKL".to_owned(),
-            "MNOP".to_owned(),
-            "AEIM".to_owned(),
-            "BFJN".to_owned(),
-            "CGKO".to_owned(),
-            "DHLP".to_owned(),
-            "AFKP".to_owned(),
-            "BGL".to_owned(),
-            "CH".to_owned(),
-            "D".to_owned(),
-            "EJO".to_owned(),
-            "IN".to_owned(),
-            "M".to_owned(),
-            "DGJM".to_owned(),
-            "CFI".to_owned(),
-            "BE".to_owned(),
-            "A".to_owned(),
-            "HKN".to_owned(),
-            "LO".to_owned(),
-            "P".to_owned()
-        ];
-        assert_eq!(get_lines_to_check(before), expected);
-    }
-
-    #[rstest]
-    #[case("ADG", 0)]
-    #[case("XMAS", 1)]
-    #[case("SAMX", 1)]
-    #[case("XMASAMX", 2)]
-    #[case("XMASAMXMAS", 3)]
-    #[case("XMASAMXMASAMX", 4)]
-    #[case("XMAXXS", 0)]
-    #[case("SAMSSX", 0)]
-    fn test_count_xmas_occurrences(#[case] line: &str, #[case] expected: usize)
-    {
-        assert_eq!(count_xmas_occurrences(line), expected);
+    fn test_part_1() {
+        let file = File::open("inputs/day-4-input.txt").expect("file not found");
+        let lines: Result<Vec<_>, _> = io::BufReader::new(file).lines().collect();
+        let lines = lines.expect("Error reading lines");
+        let result = find_xmas(lines);
+        assert_eq!(result, 2390);
     }
 }
