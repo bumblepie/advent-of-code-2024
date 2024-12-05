@@ -11,6 +11,14 @@ pub fn part_1(input_file: &str) {
     println!("XMAS appears {} times", result);
 }
 
+pub fn part_2(input_file: &str) {
+    let file = File::open(input_file).expect("file not found");
+    let lines: Result<Vec<_>, _> = io::BufReader::new(file).lines().collect();
+    let lines = lines.expect("Error reading lines");
+    let result = find_cross_mas(lines);
+    println!("XMAS appears {} times", result);
+}
+
 fn find_xmas(lines: Vec<String>) -> usize {
     let offsets = dbg!(vec![-1, 0, 1]
         .into_iter()
@@ -23,7 +31,7 @@ fn find_xmas(lines: Vec<String>) -> usize {
     for (row, line) in lines.iter().enumerate() {
         for (column, char) in line.chars().enumerate() {
             if char == 'X' {
-                count += count_xmas_occurrences((row, column), &lines, &offsets, "MAS");
+                count += count_word_occurrences((row as i32, column as i32), &lines, &offsets, "MAS");
             }
         }
     }
@@ -31,7 +39,7 @@ fn find_xmas(lines: Vec<String>) -> usize {
     count
 }
 
-fn count_xmas_occurrences(position: (usize, usize), lines: &Vec<String>, offsets: &Vec<(i32, i32)>, searching_for: &str) -> usize {
+fn count_word_occurrences(position: (i32, i32), lines: &Vec<String>, offsets: &Vec<(i32, i32)>, searching_for: &str) -> usize {
     if searching_for.is_empty() {
         return 1;
     }
@@ -46,12 +54,40 @@ fn count_xmas_occurrences(position: (usize, usize), lines: &Vec<String>, offsets
             // new position is outside of the bounds of the word grid
             continue;
         }
-        let new_position = (new_position.0 as usize, new_position.1 as usize);
 
-        if lines[new_position.0].chars().nth(new_position.1 as usize) == searching_for.chars().nth(0) {
-            count += count_xmas_occurrences(new_position, lines, &vec![offset.clone()], &searching_for[1..]);
+        if lines[new_position.0 as usize].chars().nth(new_position.1 as usize) == searching_for.chars().nth(0) {
+            count += count_word_occurrences(new_position, lines, &vec![offset.clone()], &searching_for[1..]);
         }
     }
+    count
+}
+
+fn find_cross_mas(lines: Vec<String>) -> usize {
+    let offsets = vec![
+        (1, 1),
+        (-1, 1),
+        (1, -1),
+        (-1, -1),
+    ];
+
+    let mut count = 0;
+
+    for (row, line) in lines.iter().enumerate() {
+        for (column, char) in line.chars().enumerate() {
+            if char == 'A' {
+                let num_mas_found = offsets.iter()
+                    .map(|offset| {
+                        let position = (row as i32 - offset.0 * 2, column as i32 - offset.1 * 2);
+                        count_word_occurrences(position, &lines, &vec![offset.clone()], "MAS")
+                    })
+                    .sum::<usize>();
+                if num_mas_found == 2 {
+                    count += 1;
+                }
+            }
+        }
+    }
+
     count
 }
 
@@ -75,5 +111,14 @@ mod tests {
         let lines = lines.expect("Error reading lines");
         let result = find_xmas(lines);
         assert_eq!(result, 2390);
+    }
+
+    #[test]
+    fn test_part_2_example() {
+        let file = File::open("inputs/day-4-example.txt").expect("file not found");
+        let lines: Result<Vec<_>, _> = io::BufReader::new(file).lines().collect();
+        let lines = lines.expect("Error reading lines");
+        let result = find_cross_mas(lines);
+        assert_eq!(result, 9);
     }
 }
