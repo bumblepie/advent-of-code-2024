@@ -8,3 +8,4 @@ clap = { version = "4.5.21", features = ["derive"] }
 rstest = "0.23.0"
 itertools = "0.13.0"
 regex = { version = "1.11.1", features = [] }
+memoize = "0.4.2"
