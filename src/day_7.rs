@@ -7,7 +7,17 @@ pub fn part_1(input_file: &str) {
     let equations = parse_file(input_file);
     let result = equations
         .into_iter()
-        .filter(|equation| !equation.find_solutions().is_empty())
+        .filter(|equation| !equation.find_solutions(Operation::all_p1()).is_empty())
+        .map(|equation| equation.test_value)
+        .sum::<u64>();
+    println!("{}", result);
+}
+
+pub fn part_2(input_file: &str) {
+    let equations = parse_file(input_file);
+    let result = equations
+        .into_iter()
+        .filter(|equation| !equation.find_solutions(Operation::all_p2()).is_empty())
         .map(|equation| equation.test_value)
         .sum::<u64>();
     println!("{}", result);
@@ -23,27 +33,36 @@ struct Equation {
 enum Operation {
     Multiply,
     Add,
+    Concatenate,
 }
 
 impl Operation {
-    fn all() -> Vec<Self> {
+    fn all_p1() -> Vec<Self> {
         vec![Self::Multiply, Self::Add]
+    }
+
+    fn all_p2() -> Vec<Self> {
+        vec![Self::Multiply, Self::Add, Self::Concatenate]
     }
 
     fn evaluate(&self, left: u64, right: u64) -> u64 {
         match self {
             Self::Multiply => left * right,
             Self::Add => left + right,
+            Self::Concatenate => format!("{}{}", left, right).parse::<u64>().unwrap(),
         }
     }
 }
 
 impl Equation {
-    fn find_solutions(&self) -> Vec<Vec<Operation>> {
-        let candidates = vec![Operation::all(); self.items.len() - 1]
+    fn find_solutions(&self, operations: Vec<Operation>) -> Vec<Vec<Operation>> {
+        let candidates = vec![operations; self.items.len() - 1]
             .into_iter()
             .multi_cartesian_product()
             .collect_vec();
+
+        // Optimization idea: pass in the test value to the evaluation
+        // and exit early if we're already higher since all the operations make the number larger
         candidates
             .into_iter()
             .filter(|operations| self.test_value == self.evaluate(operations))
@@ -111,14 +130,23 @@ mod tests {
         ])
     ]
     #[case("83: 17 5", vec![])]
-    #[case("156: 15 6", vec![])]
-    #[case("7290: 6 8 6 15", vec![])]
+    #[case("156: 15 6", vec![ vec![Operation::Concatenate] ])]
+    #[case("7290: 6 8 6 15", vec![ vec![Operation::Multiply, Operation::Concatenate, Operation::Multiply ] ])]
     #[case("161011: 16 10 13", vec![])]
-    #[case("192: 17 8 14", vec![])]
+    #[case("192: 17 8 14", vec![ vec![Operation::Concatenate, Operation::Add] ])]
     #[case("21037: 9 7 18 13", vec![])]
     #[case("292: 11 6 16 20", vec![ vec![Operation::Add, Operation::Multiply, Operation::Add] ])]
     fn test_find_solution(#[case] line: &str, #[case] solutions: Vec<Vec<Operation>>) {
         let equation = parse_equation(line);
-        assert_eq!(equation.find_solutions(), solutions);
+        assert_eq!(equation.find_solutions(Operation::all_p2()), solutions);
+    }
+
+    #[rstest]
+    #[case(1, 1, 11)]
+    #[case(15, 6, 156)]
+    #[case(1, 56, 156)]
+    #[case(15, 67, 1567)]
+    fn test_evaluate_concatenate(#[case] left: u64, #[case] right: u64, #[case] expected: u64) {
+        assert_eq!(Operation::Concatenate.evaluate(left, right), expected);
     }
 }
