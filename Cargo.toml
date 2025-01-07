@@ -9,3 +9,4 @@ rstest = "0.23.0"
 itertools = "0.13.0"
 regex = { version = "1.11.1", features = [] }
 memoize = "0.4.2"
+num = "0.4.3"
