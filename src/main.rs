@@ -84,7 +84,7 @@ fn main() {
         },
         12 => match args.part {
             1 => day_12::part_1("inputs/day-12-input.txt"),
-            // 2 => day_12::part_2("inputs/day-12-input.txt"),
+            2 => day_12::part_2("inputs/day-12-input.txt"),
             _ => panic!("Unknown part: {}", args.part),
         }
         _ => panic!("Unknown day: {}", args.day),

@@ -2,12 +2,22 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
+use itertools::Itertools;
 
 pub fn part_1(input_file: &str) {
     let map = parse_file(input_file);
     let regions = calculate_regions(&map);
     let fence_price: usize = regions.into_iter()
         .map(|region| region.area * region.fences)
+        .sum();
+    println!("Fence price: {}", fence_price);
+}
+
+pub fn part_2(input_file: &str) {
+    let map = parse_file(input_file);
+    let regions = calculate_regions(&map);
+    let fence_price: usize = regions.into_iter()
+        .map(|region| region.area * region.edges)
         .sum();
     println!("Fence price: {}", fence_price);
 }
@@ -70,6 +80,55 @@ fn count_fences(region: &HashSet<Point>) -> usize {
         .sum()
 }
 
+fn count_edges(region: &HashSet<Point>) -> usize {
+    let fences = region.iter()
+        .flat_map(|point| {
+            let diffs = vec![
+                Point { x: -1, y: 0 },
+                Point { x: 1, y: 0 },
+                Point { x: 0, y: -1 },
+                Point { x: 0, y: 1 },
+            ];
+            diffs.into_iter()
+                .filter(|diff| !region.contains(&point.add(&diff)))
+                .map(|diff| (diff, point.clone()))
+        })
+        .into_group_map();
+
+    let mut edges_count = 0;
+    for (fence_direction, locations) in fences {
+        let groups = if fence_direction.y == 0 {
+            locations.iter()
+                .map(|location| (location.x, location.y))
+                .into_group_map()
+        } else {
+            locations.iter()
+                .map(|location| (location.y, location.x))
+                .into_group_map()
+        };
+        let n = groups.into_iter()
+            .map(|(_, values)| {
+                if values.len() == 1 {
+                    return 1;
+                }
+                values.into_iter()
+                    .sorted()
+                    .tuple_windows()
+                    .map(|(value, next_value)| next_value - value)
+                    .fold(1, |acc, diff| {
+                        if diff == 1 {
+                            acc
+                        } else {
+                            acc + 1
+                        }
+                    })
+            })
+            .sum::<usize>();
+        edges_count += n;
+    }
+    edges_count
+}
+
 #[derive(Debug)]
 struct Map {
     plants_at_point: HashMap<Point, char>,
@@ -81,6 +140,7 @@ struct RegionStats {
     plant: char,
     area: usize,
     fences: usize,
+    edges: usize,
 }
 
 fn calculate_regions(map: &Map) -> Vec<RegionStats> {
@@ -101,12 +161,14 @@ fn calculate_regions_for_plant(plant: char, map: &Map) -> Vec<RegionStats> {
             break;
         }
     }
+
     regions.into_iter()
         .map(|region| {
             RegionStats {
                 plant,
                 area: region.len(),
                 fences: count_fences(&region),
+                edges: count_edges(&region),
             }
         })
         .collect()
@@ -146,20 +208,20 @@ mod tests {
     fn test_calculate_regions_example_1() {
         let map = parse_file("inputs/day-12-example-1.txt");
         let regions = calculate_regions(&map);
-        assert!(regions.contains(&RegionStats { plant: 'A', area: 4, fences: 10 }));
-        assert!(regions.contains(&RegionStats { plant: 'B', area: 4, fences: 8 }));
-        assert!(regions.contains(&RegionStats { plant: 'C', area: 4, fences: 10 }));
-        assert!(regions.contains(&RegionStats { plant: 'D', area: 1, fences: 4 }));
-        assert!(regions.contains(&RegionStats { plant: 'E', area: 3, fences: 8 }));
+        assert!(regions.contains(&RegionStats { plant: 'A', area: 4, fences: 10, edges: 4 }));
+        assert!(regions.contains(&RegionStats { plant: 'B', area: 4, fences: 8, edges: 4 }));
+        assert!(regions.contains(&RegionStats { plant: 'C', area: 4, fences: 10, edges: 8 }));
+        assert!(regions.contains(&RegionStats { plant: 'D', area: 1, fences: 4, edges: 4 }));
+        assert!(regions.contains(&RegionStats { plant: 'E', area: 3, fences: 8, edges: 4 }));
     }
 
     #[test]
     fn test_calculate_regions_example_2() {
         let map = parse_file("inputs/day-12-example-2.txt");
         let regions = calculate_regions(&map);
-        assert!(regions.contains(&RegionStats { plant: 'O', area: 21, fences: 36 }));
+        assert!(regions.contains(&RegionStats { plant: 'O', area: 21, fences: 36, edges: 20 }));
         let count = regions.iter()
-            .filter(|&region| region == &RegionStats { plant: 'X', area: 1, fences: 4 })
+            .filter(|&region| region == &RegionStats { plant: 'X', area: 1, fences: 4, edges: 4 })
             .count();
         assert_eq!(count, 4);
     }
@@ -168,16 +230,16 @@ mod tests {
     fn test_calculate_regions_example_3() {
         let map = parse_file("inputs/day-12-example-3.txt");
         let regions = calculate_regions(&map);
-        assert!(regions.contains(&RegionStats { plant: 'R', area: 12, fences: 18 }));
-        assert!(regions.contains(&RegionStats { plant: 'I', area: 4, fences: 8 }));
-        assert!(regions.contains(&RegionStats { plant: 'C', area: 14, fences: 28 }));
-        assert!(regions.contains(&RegionStats { plant: 'F', area: 10, fences: 18 }));
-        assert!(regions.contains(&RegionStats { plant: 'V', area: 13, fences: 20 }));
-        assert!(regions.contains(&RegionStats { plant: 'J', area: 11, fences: 20 }));
-        assert!(regions.contains(&RegionStats { plant: 'C', area: 1, fences: 4 }));
-        assert!(regions.contains(&RegionStats { plant: 'E', area: 13, fences: 18 }));
-        assert!(regions.contains(&RegionStats { plant: 'I', area: 14, fences: 22 }));
-        assert!(regions.contains(&RegionStats { plant: 'M', area: 5, fences: 12 }));
-        assert!(regions.contains(&RegionStats { plant: 'S', area: 3, fences: 8 }));
+        assert!(regions.contains(&RegionStats { plant: 'R', area: 12, fences: 18, edges: 10 }));
+        assert!(regions.contains(&RegionStats { plant: 'I', area: 4, fences: 8, edges: 4 }));
+        assert!(regions.contains(&RegionStats { plant: 'C', area: 14, fences: 28, edges: 22 }));
+        assert!(regions.contains(&RegionStats { plant: 'F', area: 10, fences: 18, edges: 12 }));
+        assert!(regions.contains(&RegionStats { plant: 'V', area: 13, fences: 20, edges: 10 }));
+        assert!(regions.contains(&RegionStats { plant: 'J', area: 11, fences: 20, edges: 12 }));
+        assert!(regions.contains(&RegionStats { plant: 'C', area: 1, fences: 4, edges: 4 }));
+        assert!(regions.contains(&RegionStats { plant: 'E', area: 13, fences: 18, edges: 8 }));
+        assert!(regions.contains(&RegionStats { plant: 'I', area: 14, fences: 22, edges: 16 }));
+        assert!(regions.contains(&RegionStats { plant: 'M', area: 5, fences: 12, edges: 6 }));
+        assert!(regions.contains(&RegionStats { plant: 'S', area: 3, fences: 8, edges: 6 }));
     }
 }
